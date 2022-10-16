@@ -25,6 +25,7 @@
 #include "webprogrammehandler.h"
 #include <iostream>
 #include <algorithm>
+#include <iostream>
 
 using namespace std;
 
@@ -48,6 +49,53 @@ ProgrammeSender& ProgrammeSender::operator=(ProgrammeSender&& other)
     other.running = false;
     return *this;
 }
+
+bool ProgrammeSender::send_wav(const std::vector<int16_t>& wavData)
+{
+    std::cout << wavData.size() << std::endl;
+    unsigned char WAVHeaderStereo[] = {  
+    /*       RIFF      */                       /*       WAVE     */  /*       FMT      */
+    0x52,0x49, 0x46,0x46, 0xD4,0x1D, 0x00,0x00, 0x57,0x41, 0x56,0x45, 0x66,0x6d, 0x74,0x20,
+    /*          10     */ /* PCM */  /* STER *//*      48 000      */ /*   BytePerSec     */
+    0x10,0x00, 0x00,0x00, 0x01,0x00, 0x02,0x00, 0x80,0xbb, 0x00,0x00, 0x80,0xbb, 0x00,0x00,
+ /*BytePerBk*/            /*    DATA         */ /*    DATA SIZE     */
+    0x04,0x00, 0x10,0x00, 0x64,0x61, 0x74,0x61, 0x80,0xBB, 0xff,0xFf
+    };
+
+    if (not s.valid()) {
+        return false;
+    }
+
+    const int flags = MSG_NOSIGNAL;
+static bool b = false;
+
+    if (!b)
+    {
+    ssize_t ret = s.send(WAVHeaderStereo, sizeof(WAVHeaderStereo), flags);
+    if (ret == -1) {
+        s.close();
+        std::unique_lock<std::mutex> lock(mutex);
+        running = false;
+        lock.unlock();
+        cv.notify_all();
+        return false;
+    }
+    b = true;
+    }
+
+    ssize_t ret = s.send(wavData.data(), wavData.size() * 2 - 22, flags);
+    if (ret == -1) {
+        s.close();
+        std::unique_lock<std::mutex> lock(mutex);
+        running = false;
+        lock.unlock();
+        cv.notify_all();
+        return false;
+    }
+
+    return true;
+}
+
 
 bool ProgrammeSender::send_mp3(const std::vector<uint8_t>& mp3Data)
 {
@@ -222,7 +270,7 @@ void WebProgrammeHandler::onNewAudio(std::vector<int16_t>&& audioData,
         audiolevels.last_audioLevel_L = last_audioLevel_L;
         audiolevels.last_audioLevel_R = last_audioLevel_R;
     }
-
+/*
     if (not lame_initialised) {
         lame_set_in_samplerate(lame.lame, rate);
         lame_set_num_channels(lame.lame, channels);
@@ -246,16 +294,16 @@ void WebProgrammeHandler::onNewAudio(std::vector<int16_t>&& audioData,
     }
     else if (written > 0) {
         mp3buf.resize(written);
-
+*/
         std::unique_lock<std::mutex> lock(senders_mutex);
 
         for (auto& s : senders) {
-            bool success = s->send_mp3(mp3buf);
+            bool success = s->send_wav(audioData);
             if (not success) {
                 cerr << "Failed to send audio for " << serviceId << endl;
             }
         }
-    }
+    //}
 }
 
 void WebProgrammeHandler::onRsErrors(bool uncorrectedErrors, int numCorrectedErrors)
