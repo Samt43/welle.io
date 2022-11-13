@@ -556,6 +556,7 @@ int main(int argc, char **argv)
     }
     auto freq = channels.getFrequency(options.channel);
     in->setFrequency(freq);
+    in->stop();
     string service_to_tune = options.programme;
 
     if (not options.tests.empty()) {
