@@ -156,7 +156,7 @@ WebRadioInterface::WebRadioInterface(CVirtualInput& in,
         }
 
         time_rx_created = chrono::system_clock::now();
-        rx->restart(false);
+        //rx->restart(false);
     }
 
     programme_handler_thread = thread(&WebRadioInterface::handle_phs, this);
