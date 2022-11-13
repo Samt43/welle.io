@@ -856,9 +856,12 @@ bool WebRadioInterface::send_radio(Socket& s, const std::string& stream)
 {
     if (stream.size() >= 2)
     {
-        retune(stream.substr(0,2));
-        sleep(5);
-        send_mp3(s, stream.substr(2, stream.size() - 2));
+        if (!send_mp3(s, stream.substr(2, stream.size() - 2)))
+        {
+            retune(stream.substr(0,2));
+            sleep(5);
+            send_mp3(s, stream.substr(2, stream.size() - 2));
+        }
     }
         return true;
 }
