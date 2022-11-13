@@ -507,6 +507,7 @@ void OFDMProcessor::stop()
         if (threadHandle.joinable()) {
             threadHandle.join();
         }
+        input.stop();
     }
 }
 
