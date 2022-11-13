@@ -119,6 +119,11 @@ class WebRadioInterface : public RadioControllerInterface {
         // in decimal
         bool send_mp3(Socket& s, const std::string& stream);
 
+        // Send an mp3 stream containing the selected programme.
+        // stream is a service id, either in hex with 0x prefix or
+        // in decimal
+        bool send_radio(Socket& s, const std::string& stream);
+
         // Send the slide for the selected programme.
         // stream is a service id, either in hex with 0x prefix or
         // in decimal

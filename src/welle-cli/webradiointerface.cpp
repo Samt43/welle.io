@@ -502,11 +502,18 @@ bool WebRadioInterface::dispatch_client(Socket&& client)
 
                 const regex regex_mp3(R"(^[/]mp3[/]([^ ]+))");
                 std::smatch match_mp3;
+
+                const regex regex_radio(R"(^[/]radio[/]([^ ]+))");
+                std::smatch match_radio;
+
                 if (regex_search(req.url, match_mp3, regex_mp3)) {
                     success = send_mp3(s, match_mp3[1]);
                 }
                 else if (regex_search(req.url, match_slide, regex_slide)) {
                     success = send_slide(s, match_slide[1]);
+                }
+                else if (regex_search(req.url, match_radio, regex_radio)) {
+                    success = send_radio(s, match_radio[1]);
                 }
                 else {
                     cerr << "Could not understand GET request " << req.url << endl;
@@ -843,6 +850,17 @@ bool WebRadioInterface::send_mux_playlist(Socket& s)
         return false;
     }
     return true;
+}
+
+bool WebRadioInterface::send_radio(Socket& s, const std::string& stream)
+{
+    if (stream.size() >= 2)
+    {
+        retune(stream.substr(0,2));
+        sleep(5);
+        send_mp3(s, stream.substr(2, stream.size() - 2));
+    }
+        return true;
 }
 
 bool WebRadioInterface::send_mp3(Socket& s, const std::string& stream)
