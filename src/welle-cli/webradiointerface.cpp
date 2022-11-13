@@ -464,7 +464,7 @@ bool WebRadioInterface::dispatch_client(Socket&& client)
             if (req.url == "/") {
                 success = send_file(s, "index.html", http_contenttype_html);
             }
-            if (req.url == "/play") {
+            if (req.url == "/play.m3u") {
                 success = send_file(s, "play.m3u", http_contenttype_m3u);
             }
             else if (req.url == "/index.js") {
