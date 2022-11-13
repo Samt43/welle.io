@@ -298,6 +298,11 @@ if(BUILD_WELLE_CLI)
             COMMAND ${CMAKE_COMMAND} -E copy
                     ${CMAKE_SOURCE_DIR}/src/welle-cli/index.js
                     ${CMAKE_CURRENT_BINARY_DIR}/index.js)
+    add_custom_command(
+            TARGET ${cliExecutableName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                    ${CMAKE_SOURCE_DIR}/src/welle-cli/play.m3u
+                    ${CMAKE_CURRENT_BINARY_DIR}/play.m3u)
 
     if(APPLE AND WITH_APP_BUNDLE)
         INSTALL (TARGETS ${cliExecutableName} RUNTIME DESTINATION ${GUI_INSTALL_DIR}/${executableName}.app/Contents/MacOS)
