@@ -894,10 +894,24 @@ bool WebRadioInterface::send_mp3(Socket& s, const std::string& stream)
                 ph.registerSender(&sender);
                 check_decoders_required();
                 sender.wait_for_termination();
-
+                sleep(5);
                 cerr << "Removing mp3 sender" << endl;
                 ph.removeSender(&sender);
                 check_decoders_required();
+                bool b_IsProgActive = false;
+
+                for (auto b : programmes_being_decoded)
+                {
+                    if (b.second)
+                    {
+                        b_IsProgActive = true;
+                    }
+                }
+
+                if (!b_IsProgActive)
+                {
+                    rx->stop();
+                }
 
                 return true;
             }
