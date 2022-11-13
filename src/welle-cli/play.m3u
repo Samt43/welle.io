@@ -1,0 +1,53 @@
+#EXTM3U
+#EXTINF:-1 sid="5D0xf650",SUD RADIO       
+http://10.0.0.1:8000/radio/5D0xf650
+#EXTINF:-1 sid="5D0xf209",BLEU ISERE      
+http://10.0.0.1:8000/radio/5D0xf209
+#EXTINF:-1 sid="5D0xf865",RADIO SCOOP     
+http://10.0.0.1:8000/radio/5D0xf865
+#EXTINF:-1 sid="5D0xf9f1",CAPSAO          
+http://10.0.0.1:8000/radio/5D0xf9f1
+#EXTINF:-1 sid="5D0xf223",TSF JAZZ        
+http://10.0.0.1:8000/radio/5D0xf223
+#EXTINF:-1 sid="5D0xf9f5",Melody          
+http://10.0.0.1:8000/radio/5D0xf9f5
+#EXTINF:-1 sid="5D0xf22b",Radio ORIENT    
+http://10.0.0.1:8000/radio/5D0xf22b
+#EXTINF:-1 sid="5D0xf22f",J A Z Z RADIO   
+http://10.0.0.1:8000/radio/5D0xf22f
+#EXTINF:-1 sid="5D0xf835",VIRAGE RADIO    
+http://10.0.0.1:8000/radio/5D0xf835
+#EXTINF:-1 sid="5D0xf21d",OUI FM dab+     
+http://10.0.0.1:8000/radio/5D0xf21d
+#EXTINF:-1 sid="5D0xf20c",RCF ISERE       
+http://10.0.0.1:8000/radio/5D0xf20c
+#EXTINF:-1 sid="5D0xf887",TONIC RADIO     
+http://10.0.0.1:8000/radio/5D0xf887
+#EXTINF:-1 sid="5D0xf21b",ADO dab+        
+http://10.0.0.1:8000/radio/5D0xf21b
+#EXTINF:-1 sid="0xf229",BEUR FM         
+http://10.0.0.1:8000/radio/9C0xf229
+#EXTINF:-1 sid="0xf882",I S A           
+http://10.0.0.1:8000/radio/9C0xf882
+#EXTINF:-1 sid="0xf8a7",R K S           
+http://10.0.0.1:8000/radio/9C0xf8a7
+#EXTINF:-1 sid="0xf891",Campus Grenoble 
+http://10.0.0.1:8000/radio/9C0xf891
+#EXTINF:-1 sid="0xf8a1",MAX RADIO       
+http://10.0.0.1:8000/radio/9C0xf8a1
+#EXTINF:-1 sid="0xf895",New's FM        
+http://10.0.0.1:8000/radio/9C0xf895
+#EXTINF:-1 sid="0xf880",HOT RADIO       
+http://10.0.0.1:8000/radio/9C0xf880
+#EXTINF:-1 sid="0xf431",ALPES 1 GRENOBLE
+http://10.0.0.1:8000/radio/9C0xf431
+#EXTINF:-1 sid="0xf22c",FG. DJ Radio    
+http://10.0.0.1:8000/radio/9C0xf22c
+#EXTINF:-1 sid="0xf8fe",RADIO PITCHOUN  
+http://10.0.0.1:8000/radio/9C0xf8fe
+#EXTINF:-1 sid="0xf220",NRJ GRENOBLE    
+http://10.0.0.1:8000/radio/9C0xf220
+#EXTINF:-1 sid="0xf218",NOSTALGIGRENOBLE
+http://10.0.0.1:8000/radio/9C0xf218
+#EXTINF:-1 sid="0xf224",CHERIEFMGRENOBLE
+http://10.0.0.1:8000/radio/9C0xf224
