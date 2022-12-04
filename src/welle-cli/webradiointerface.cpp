@@ -503,7 +503,7 @@ bool WebRadioInterface::dispatch_client(Socket&& client)
                 return false;
             }
             else {
-                const regex regex_slide(R"(^[/]slide[/]([^ ]+))");
+                const regex regex_slide(R"(^[/]slide[/]([^ ]+[?]))");
                 std::smatch match_slide;
 
                 const regex regex_mp3(R"(^[/]mp3[/]([^ ]+))");
@@ -516,7 +516,12 @@ bool WebRadioInterface::dispatch_client(Socket&& client)
                     success = send_mp3(s, match_mp3[1]);
                 }
                 else if (regex_search(req.url, match_slide, regex_slide)) {
-                    success = send_slide(s, match_slide[1]);
+                    std::string l_Match = match_slide[1];
+                    if (l_Match.back() == '?')
+                    {
+                        l_Match.pop_back();
+                    }
+                    success = send_slide(s, l_Match);
                 }
                 else if (regex_search(req.url, match_radio, regex_radio)) {
                     success = send_radio(s, match_radio[1]);
