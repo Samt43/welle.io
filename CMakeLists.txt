@@ -9,13 +9,13 @@ endif()
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 14)
 
-option(BUILD_WELLE_IO    "Build Welle.io"                        ON  )
+option(BUILD_WELLE_IO    "Build Welle.io"                        OFF  )
 option(BUILD_WELLE_CLI   "Build welle-cli"                       ON  )
 option(WITH_APP_BUNDLE   "Enable Application Bundle for macOS"   ON  )
 option(KISS_FFT          "KISS FFT instead of FFTW"              OFF )
 option(PROFILING         "Enable profiling (see README.md)"      OFF )
 option(AIRSPY            "Compile with Airspy support"           OFF )
-option(RTLSDR            "Compile with RTL-SDR support"          OFF )
+option(RTLSDR            "Compile with RTL-SDR support"          ON )
 option(SOAPYSDR          "Compile with SoapySDR support"         OFF )
 
 add_definitions(-Wall)
@@ -293,6 +293,11 @@ if(BUILD_WELLE_CLI)
             COMMAND ${CMAKE_COMMAND} -E copy
                     ${CMAKE_SOURCE_DIR}/src/welle-cli/index.html
                     ${CMAKE_CURRENT_BINARY_DIR}/index.html)
+    add_custom_command(
+            TARGET ${cliExecutableName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                    ${CMAKE_SOURCE_DIR}/src/welle-cli/player.html
+                    ${CMAKE_CURRENT_BINARY_DIR}/player.html)
     add_custom_command(
             TARGET ${cliExecutableName} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy
