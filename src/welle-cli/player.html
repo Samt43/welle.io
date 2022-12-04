@@ -197,6 +197,7 @@
         mediaTag.parentElement.querySelector(".m3u-player--title").textContent = getName(trackName);
         g_TrackUrl = trackUrl
         g_TrackName = trackName
+        updateImg();
         callback();
       }
     }
@@ -253,7 +254,7 @@
       wrapper.appendChild(img);
     
     
-     setInterval(updateImg, 1500);
+     setInterval(updateImg, 15000);
     
     
       controls.style.width = mediaTag.getBoundingClientRect().width.toString() + "px";
@@ -311,7 +312,7 @@
       </head>
       <body id="body">
         <h1>MatMat Radio !</h1>
-        <audio id="player" src="http://localhost:8000/play.m3u" preload="none" controls="controls">
+        <audio id="player" src="http://10.0.0.1:8000/play.m3u" preload="none" controls="controls">
         not supported?
         </audio>
       </body>
