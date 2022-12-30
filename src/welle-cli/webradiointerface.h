@@ -30,6 +30,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <deque>
+#include <future>
 #include <list>
 #include <map>
 #include <memory>
@@ -200,6 +201,9 @@ class WebRadioInterface : public RadioControllerInterface {
         std::map<comb_pattern_t, std::list<tii_measurement_t> > tiis;
 
         Socket serverSocket;
+
+        mutable std::mutex running_connexion_mut;
+        std::deque<std::future<bool> > running_connections;
 
         mutable std::mutex rx_mut;
         std::chrono::time_point<std::chrono::system_clock> time_rx_created;

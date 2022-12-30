@@ -915,22 +915,15 @@ bool WebRadioInterface::send_mp3(Socket& s, const std::string& stream)
                 ph.registerSender(&sender);
                 check_decoders_required();
                 sender.wait_for_termination();
-                sleep(5);
                 cerr << "Removing mp3 sender" << endl;
                 ph.removeSender(&sender);
                 check_decoders_required();
-                bool b_IsProgActive = false;
 
-                for (auto b : programmes_being_decoded)
+                sleep(2);
+                std::lock_guard<mutex> l_lock(running_connexion_mut);
+                if (running_connections.size() == 1)
                 {
-                    if (b.second)
-                    {
-                        b_IsProgActive = true;
-                    }
-                }
-
-                if (!b_IsProgActive)
-                {
+                    // We stop RX as no one will need it anymore !
                     rx->stop();
                 }
 
@@ -1433,8 +1426,6 @@ const int sig_caught = 0;
 
 void WebRadioInterface::serve()
 {
-    deque<future<bool> > running_connections;
-
 #if HAVE_SIGACTION
     struct sigaction sa = {};
     sa.sa_handler = handler;
@@ -1443,10 +1434,15 @@ void WebRadioInterface::serve()
         cerr << "Failed to set up signal handler" << endl;
     }
 #endif
+    {
+        std::lock_guard<mutex> l_lock(running_connexion_mut);
+        running_connections.clear();
+    }
 
     while (sig_caught == 0) {
         auto client = serverSocket.accept();
 
+        std::lock_guard<mutex> l_lock(running_connexion_mut);
         running_connections.push_back(async(launch::async,
                     &WebRadioInterface::dispatch_client, this, move(client)));
 
@@ -1465,6 +1461,7 @@ void WebRadioInterface::serve()
             }
         }
         running_connections = move(still_running_connections);
+
     }
 
     cerr << "SERVE No more connections running" << endl;
@@ -1474,23 +1471,26 @@ void WebRadioInterface::serve()
         programme_handler_thread.join();
     }
 
-    cerr << "SERVE Wait for all futures to clear" << endl;
-    while (running_connections.size() > 0) {
-        deque<future<bool> > still_running_connections;
-        for (auto& fut : running_connections) {
-            if (fut.valid()) {
-                switch (fut.wait_for(chrono::milliseconds(1))) {
-                    case future_status::deferred:
-                    case future_status::timeout:
-                        still_running_connections.push_back(move(fut));
-                        break;
-                    case future_status::ready:
-                        fut.get();
-                        break;
+    {
+        std::lock_guard<mutex> l_lock(running_connexion_mut);
+        cerr << "SERVE Wait for all futures to clear" << endl;
+        while (running_connections.size() > 0) {
+            deque<future<bool> > still_running_connections;
+            for (auto& fut : running_connections) {
+                if (fut.valid()) {
+                    switch (fut.wait_for(chrono::milliseconds(1))) {
+                        case future_status::deferred:
+                        case future_status::timeout:
+                            still_running_connections.push_back(move(fut));
+                            break;
+                        case future_status::ready:
+                            fut.get();
+                            break;
+                    }
                 }
             }
+            running_connections = move(still_running_connections);
         }
-        running_connections = move(still_running_connections);
     }
 
     cerr << "SERVE clear remaining data structures" << endl;
