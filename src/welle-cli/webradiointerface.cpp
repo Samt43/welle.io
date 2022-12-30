@@ -869,12 +869,25 @@ bool WebRadioInterface::send_radio(Socket& s, const std::string& stream)
     {
         if (!send_mp3(s, stream.substr(2, stream.size() - 2)))
         {
+            constexpr int MAX_RETRY = 15;
+            // Seems we can't find the stream. Try to retune to the right frequency
             retune(stream.substr(0,2));
-            sleep(5);
-            send_mp3(s, stream.substr(2, stream.size() - 2));
+            int nbRetry = 0;
+            while (!send_mp3(s, stream.substr(2, stream.size() - 2)))
+            {
+                if (nbRetry == MAX_RETRY)
+                {
+                    // We failed to get the stream, abort
+                    return false;
+                }
+
+                // Wait in order to get the streams from the new channel.
+                sleep(1);
+                ++nbRetry;
+            }
         }
     }
-        return true;
+    return true;
 }
 
 bool WebRadioInterface::send_mp3(Socket& s, const std::string& stream)
