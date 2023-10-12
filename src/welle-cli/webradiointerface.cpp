@@ -89,6 +89,7 @@ static const char* http_405 = "HTTP/1.0 405 Method Not Allowed\r\n";
 static const char* http_500 = "HTTP/1.0 500 Internal Server Error\r\n";
 static const char* http_503 = "HTTP/1.0 503 Service Unavailable\r\n";
 static const char* http_contenttype_mp3 = "Content-Type: audio/mpeg\r\n";
+static const char* http_contenttype_flac = "Content-Type: audio/flac\r\n";
 static const char* http_contenttype_m3u = "Content-Type: application/mpegurl\r\n";
 static const char* http_contenttype_text = "Content-Type: text/plain\r\n";
 static const char* http_contenttype_data =
@@ -513,7 +514,7 @@ bool WebRadioInterface::dispatch_client(Socket&& client)
                 std::smatch match_radio;
 
                 if (regex_search(req.url, match_mp3, regex_mp3)) {
-                    success = send_mp3(s, match_mp3[1]);
+                    success = send_stream(s, match_mp3[1]);
                 }
                 else if (regex_search(req.url, match_slide, regex_slide)) {
                     std::string l_Match = match_slide[1];
@@ -867,13 +868,13 @@ bool WebRadioInterface::send_radio(Socket& s, const std::string& stream)
 {
     if (stream.size() >= 2)
     {
-        if (!send_mp3(s, stream.substr(2, stream.size() - 2)))
+        if (!send_stream(s, stream.substr(2, stream.size() - 2)))
         {
             constexpr int MAX_RETRY = 15;
             // Seems we can't find the stream. Try to retune to the right frequency
             retune(stream.substr(0,2));
             int nbRetry = 0;
-            while (!send_mp3(s, stream.substr(2, stream.size() - 2)))
+            while (!send_stream(s, stream.substr(2, stream.size() - 2)))
             {
                 if (nbRetry == MAX_RETRY)
                 {
@@ -890,7 +891,7 @@ bool WebRadioInterface::send_radio(Socket& s, const std::string& stream)
     return true;
 }
 
-bool WebRadioInterface::send_mp3(Socket& s, const std::string& stream)
+bool WebRadioInterface::send_stream(Socket& s, const std::string& stream)
 {
     unique_lock<mutex> lock(rx_mut);
     ASSERT_RX;
@@ -904,7 +905,21 @@ bool WebRadioInterface::send_mp3(Socket& s, const std::string& stream)
 
                 lock.unlock();
 
-                if (not send_http_response(s, http_ok, "", http_contenttype_mp3)) {
+                std::string http_contenttype;
+
+                switch (decode_settings.outputCodec)
+                {
+                case OutputCodec::FLAC:
+                    http_contenttype = http_contenttype_flac;
+                    break;
+                case OutputCodec::MP3:
+                    http_contenttype = http_contenttype_mp3;
+                    break;
+                default:
+                    break;
+                }
+
+                if (not send_http_response(s, http_ok, "", http_contenttype)) {
                     cerr << "Failed to send mp3 headers" << endl;
                     return false;
                 }
@@ -1313,7 +1328,7 @@ void WebRadioInterface::handle_phs()
             }
 
             if (phs.count(s.serviceId) == 0) {
-                WebProgrammeHandler ph(s.serviceId);
+                WebProgrammeHandler ph(s.serviceId, decode_settings.outputCodec);
                 phs.emplace(std::make_pair(s.serviceId, move(ph)));
             }
         }
