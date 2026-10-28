@@ -16,6 +16,11 @@
   let artworkRequest = 0;
   let artworkStation = "";
   let artworkUrl = "";
+  let defaultArtworkUrl = "";
+  let songInfo = "";
+  let playbackStatus = "Ready";
+  let songInfoRequest = 0;
+  let songInfoController;
 
   function readPreference(key, fallback) {
     try {
@@ -40,8 +45,8 @@
   function updateMediaMetadata() {
     if (!("mediaSession" in navigator) || typeof MediaMetadata === "undefined") return;
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: getName(g_TrackName).trim(),
-      artist: "MatMat Radio",
+      title: songInfo || getName(g_TrackName).trim(),
+      artist: songInfo ? getName(g_TrackName).trim() : "MatMat Radio",
       artwork: artworkUrl ? [{ src: artworkUrl }] :
         [{ src: window.location.origin + "/welle-icon.png", sizes: "512x512", type: "image/png" }]
     });
@@ -50,11 +55,41 @@
   const audioRetries = new WeakMap();
 
   function setPlaybackStatus(message, retryable = false) {
-    document.getElementById("playbackStatus").textContent = message;
+    playbackStatus = message;
+    document.getElementById("playbackStatus").textContent =
+      message === "Playing" ? (songInfo || message) : message;
     document.getElementById("retryPlayback").hidden = !retryable;
     if ("mediaSession" in navigator) {
       navigator.mediaSession.playbackState = message === "Playing" ? "playing" : "paused";
     }
+  }
+
+  async function refreshSongInfo() {
+    if (playbackStatus !== "Playing" || !g_TrackUrl || songInfoController) return;
+    const station = g_TrackUrl;
+    const request = ++songInfoRequest;
+    const controller = new AbortController();
+    songInfoController = controller;
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch("/mux.json", { cache: "no-store", signal: controller.signal });
+      if (!response.ok) throw new Error("Station metadata unavailable");
+      const data = await response.json();
+      if (request !== songInfoRequest || station !== g_TrackUrl) return;
+      const match = new URL(station, window.location.href).pathname.match(/(0x[0-9a-f]+|\d+)$/i);
+      const serviceId = match ? Number(match[1]) : NaN;
+      const service = Array.isArray(data.services) ?
+        data.services.find(entry => Number(entry.sid) === serviceId) : null;
+      songInfo = typeof service?.dls?.label === "string" ? service.dls.label.trim() : "";
+    } catch (error) {
+      if (request !== songInfoRequest || station !== g_TrackUrl) return;
+      songInfo = "";
+    } finally {
+      clearTimeout(timeout);
+      if (songInfoController === controller) songInfoController = null;
+    }
+    if (playbackStatus === "Playing") setPlaybackStatus("Playing");
+    updateMediaMetadata();
   }
 
   function setupAudioRetry(mediaTag) {
@@ -138,6 +173,7 @@
       clearTimer();
       attempts = 0;
       setPlaybackStatus("Playing");
+      refreshSongInfo();
     });
     mediaTag.addEventListener("waiting", () => {
       if (active && !retryPending) setPlaybackStatus("Buffering...");
@@ -168,14 +204,20 @@
     audioRetries.get(mediaTag).play();
   }
 
+  function showDefaultArtwork() {
+    img.hidden = true;
+    artworkUrl = defaultArtworkUrl;
+    document.getElementById("artworkBackdrop").style.backgroundImage =
+      "url(" + JSON.stringify(defaultArtworkUrl) + ")";
+    if (g_TrackName) updateMediaMetadata();
+  }
+
   function updateImg() {
     if (!img || !g_TrackUrl) return;
     const request = ++artworkRequest;
     if (artworkStation !== g_TrackUrl) {
-      img.hidden = true;
       artworkStation = g_TrackUrl;
-      artworkUrl = "";
-      document.getElementById("artworkBackdrop").style.backgroundImage = "none";
+      showDefaultArtwork();
     }
     const pending = new Image();
     const stationName = getName(g_TrackName);
@@ -187,6 +229,9 @@
       document.getElementById("artworkBackdrop").style.backgroundImage =
         "url(" + JSON.stringify(artworkUrl) + ")";
       updateMediaMetadata();
+    };
+    pending.onerror = () => {
+      if (request === artworkRequest) showDefaultArtwork();
     };
     pending.src = window.location.origin + '/slide/' + g_TrackUrl.slice(-6) + '?' + Date.now();
   }
@@ -271,6 +316,12 @@
       trackUrl = streamUrl.href;
     }
     let trackName = playlist[trackIndex].name;
+    songInfo = "";
+    songInfoRequest++;
+    if (songInfoController) {
+      songInfoController.abort();
+      songInfoController = null;
+    }
     audioRetries.get(mediaTag).reset();
     // swich to the next segment
     mediaTag.setAttribute("src", trackUrl);
@@ -356,11 +407,20 @@
     img = document.createElement('img');
     img.hidden = true;
     img.onload = () => { img.hidden = img.src !== artworkUrl; };
-    img.onerror = () => { img.hidden = true; };
+    img.onerror = () => {
+      if (img.src === artworkUrl) showDefaultArtwork();
+    };
     img.style.width = "100%"
     img.style.position = "absolute"
     document.getElementById("logo").appendChild(img)
+    const defaultLogo = document.querySelector("#logo svg").cloneNode(true);
+    defaultLogo.setAttribute("width", "320");
+    defaultLogo.setAttribute("height", "240");
+    defaultArtworkUrl = "data:image/svg+xml;charset=utf-8," +
+      encodeURIComponent(new XMLSerializer().serializeToString(defaultLogo));
+    showDefaultArtwork();
     setInterval(updateImg, 15000);
+    setInterval(refreshSongInfo, 5000);
 
     wrapper.appendChild(controls);
 
@@ -549,11 +609,6 @@
       grid-column: 2;
       min-width: 0;
     }
-    .player-heading {
-      margin: 0 0 0.45em;
-      color: #f2f7f5;
-      font-size: 1.5em;
-    }
     #logo {
       overflow: hidden;
       border: 1px solid #29403c;
@@ -628,7 +683,12 @@
       color: #a7bdb5;
       font-size: 14px;
     }
+    #playbackStatus {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
     #retryPlayback {
+      flex-shrink: 0;
       padding: 6px 12px;
       border: 1px solid var(--accent);
       border-radius: 4px;
@@ -785,7 +845,6 @@
 <body id="body">
   <div id="artworkBackdrop" aria-hidden="true"></div>
   <div class="player-shell">
-    <h1 class="player-heading">MatMat Radio</h1>
     <div id="logo" style="position: relative; width: 100%; aspect-ratio: 320/240; max-width: 640px; margin: auto;" >
     <div style="position: absolute; width: 100%">
       <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0" y="0" width="100%" height="auto" viewBox="0, 0, 100, 59">
