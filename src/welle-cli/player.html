@@ -17,6 +17,7 @@
   let artworkStation = "";
   let artworkUrl = "";
   let defaultArtworkUrl = "";
+  let artworkBackdropLayer;
   let songInfo = "";
   let playbackStatus = "Ready";
   let songInfoRequest = 0;
@@ -204,30 +205,57 @@
     audioRetries.get(mediaTag).play();
   }
 
+  function crossfadeArtworkBackdrop(url) {
+    const backdrop = document.getElementById("artworkBackdrop");
+    const nextLayer = document.createElement("div");
+    nextLayer.className = "artwork-backdrop-layer";
+    nextLayer.style.backgroundImage = "url(" + JSON.stringify(url) + ")";
+    backdrop.appendChild(nextLayer);
+
+    const previousLayer = artworkBackdropLayer;
+    artworkBackdropLayer = nextLayer;
+    requestAnimationFrame(() => nextLayer.classList.add("is-visible"));
+
+    if (previousLayer) {
+      previousLayer.classList.remove("is-visible");
+      setTimeout(() => previousLayer.remove(), 700);
+    }
+  }
+
   function showDefaultArtwork() {
-    img.hidden = true;
+    if (img) {
+      const previousImage = img;
+      img = null;
+      previousImage.classList.remove("is-visible");
+      setTimeout(() => previousImage.remove(), 500);
+    }
     artworkUrl = defaultArtworkUrl;
-    document.getElementById("artworkBackdrop").style.backgroundImage =
-      "url(" + JSON.stringify(defaultArtworkUrl) + ")";
+    crossfadeArtworkBackdrop(defaultArtworkUrl);
     if (g_TrackName) updateMediaMetadata();
   }
 
   function updateImg() {
-    if (!img || !g_TrackUrl) return;
+    if (!g_TrackUrl) return;
     const request = ++artworkRequest;
     if (artworkStation !== g_TrackUrl) {
       artworkStation = g_TrackUrl;
-      showDefaultArtwork();
     }
     const pending = new Image();
     const stationName = getName(g_TrackName);
     pending.onload = () => {
       if (request !== artworkRequest) return;
-      img.alt = stationName;
-      img.src = pending.src;
+      pending.alt = stationName;
+      pending.className = "station-artwork";
+      document.getElementById("logo").appendChild(pending);
+      const previousImage = img;
+      img = pending;
+      requestAnimationFrame(() => pending.classList.add("is-visible"));
+      if (previousImage) {
+        previousImage.classList.remove("is-visible");
+        setTimeout(() => previousImage.remove(), 500);
+      }
       artworkUrl = pending.src;
-      document.getElementById("artworkBackdrop").style.backgroundImage =
-        "url(" + JSON.stringify(artworkUrl) + ")";
+      crossfadeArtworkBackdrop(artworkUrl);
       updateMediaMetadata();
     };
     pending.onerror = () => {
@@ -404,15 +432,6 @@
 
     wrapper.appendChild(styleTag);
 
-    img = document.createElement('img');
-    img.hidden = true;
-    img.onload = () => { img.hidden = img.src !== artworkUrl; };
-    img.onerror = () => {
-      if (img.src === artworkUrl) showDefaultArtwork();
-    };
-    img.style.width = "100%"
-    img.style.position = "absolute"
-    document.getElementById("logo").appendChild(img)
     const defaultLogo = document.querySelector("#logo svg").cloneNode(true);
     defaultLogo.setAttribute("width", "320");
     defaultLogo.setAttribute("height", "240");
@@ -598,11 +617,31 @@
       inset: -40px;
       z-index: -1;
       pointer-events: none;
+    }
+    .artwork-backdrop-layer {
+      position: absolute;
+      inset: 0;
       background-position: center;
       background-size: cover;
       background-repeat: no-repeat;
       filter: blur(32px);
+      opacity: 0;
+      transition: opacity 600ms ease;
+    }
+    .artwork-backdrop-layer.is-visible {
       opacity: 0.3;
+    }
+    .station-artwork {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      opacity: 0;
+      transition: opacity 450ms ease;
+    }
+    .station-artwork.is-visible {
+      opacity: 1;
     }
     .player-shell {
       display: grid;
@@ -840,7 +879,7 @@
       }
     }
     @media (prefers-reduced-motion: reduce) {
-      .radio-track, #player {
+      .radio-track, #player, .station-artwork, .artwork-backdrop-layer {
         transition: none;
       }
     }
