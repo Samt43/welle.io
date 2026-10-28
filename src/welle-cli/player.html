@@ -567,8 +567,10 @@
 <head>
   <title>MatMat Radio</title>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#443634">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1110">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" href="/welle-icon.png">
   <link rel="apple-touch-icon" href="/welle-icon.png">
@@ -582,6 +584,9 @@
       --accent: #00bdd2;
       --focus: #86dd25;
       margin: 0;
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
       padding-bottom: var(--playback-panel-height, 160px);
       background: var(--surface);
       color: #e6efec;
@@ -654,9 +659,9 @@
     }
     @supports ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
       #playbackPanel {
-        background: rgba(11, 17, 16, 0.65);
-        -webkit-backdrop-filter: blur(16px);
-        backdrop-filter: blur(16px);
+        background: rgba(11, 17, 16, 0.5);
+        -webkit-backdrop-filter: blur(20px) saturate(55%);
+        backdrop-filter: blur(20px) saturate(55%);
       }
     }
     .transport > div {
