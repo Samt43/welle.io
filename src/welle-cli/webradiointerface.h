@@ -207,7 +207,7 @@ class WebRadioInterface : public RadioControllerInterface {
         std::unique_ptr<RadioReceiver> rx;
 
         using SId_t = uint32_t;
-        std::map<SId_t, WebProgrammeHandler> phs;
+        std::map<SId_t, std::shared_ptr<WebProgrammeHandler>> phs;
         std::map<SId_t, bool> programmes_being_decoded;
         std::condition_variable phs_changed;
 

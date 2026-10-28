@@ -212,8 +212,11 @@ void ProgrammeSender::wait_for_termination() const
 
 void ProgrammeSender::cancel()
 {
-    s.close();
-    running = false;
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        running = false;
+    }
+    cv.notify_all();
 }
 
 WebProgrammeHandler::WebProgrammeHandler(uint32_t serviceId, OutputCodec codecID) :
@@ -243,7 +246,7 @@ WebProgrammeHandler::WebProgrammeHandler(WebProgrammeHandler&& other) :
 
 WebProgrammeHandler::~WebProgrammeHandler()
 {
-
+    encoder.reset();
 }
 
 void WebProgrammeHandler::registerSender(ProgrammeSender *sender)

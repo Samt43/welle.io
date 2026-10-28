@@ -203,12 +203,12 @@ void WebRadioInterface::check_decoders_required()
                 const bool require =
                     rx->serviceHasAudioComponent(s) and
                     (decode_settings.strategy == DecodeStrategy::All or
-                     phs.at(sid).needsToBeDecoded() or
+                     phs.at(sid)->needsToBeDecoded() or
                      is_active);
                 const bool is_decoded = programmes_being_decoded[sid];
 
                 if (require and not is_decoded) {
-                    bool success = rx->addServiceToDecode(phs.at(sid), "", s);
+                    bool success = rx->addServiceToDecode(*phs.at(sid), "", s);
 
                     if (success) {
                         programmes_being_decoded[sid] = success;
@@ -238,6 +238,9 @@ void WebRadioInterface::check_decoders_required()
     }
     catch (const TuneFailed&) {
         rx->restart_decoder();
+        for (auto& ph : phs) {
+            ph.second->cancelAll();
+        }
         phs.clear();
         programmes_being_decoded.clear();
         carousel_services_available.clear();
@@ -273,6 +276,10 @@ void WebRadioInterface::retune(const std::string& channel)
 
         cerr << "RETUNE Destroy RX" << endl;
         rx.reset();
+        phs.clear();
+        programmes_being_decoded.clear();
+        carousel_services_available.clear();
+        carousel_services_active.clear();
 
         {
             lock_guard<mutex> data_lock(data_mut);
@@ -721,7 +728,7 @@ bool WebRadioInterface::send_mux_json(Socket& s)
             }
 
             try {
-                const auto& wph = phs.at(s.serviceId);
+                const auto& wph = *phs.at(s.serviceId);
                 const auto al = wph.getAudioLevels();
                 service.audiolevel_present = true;
                 service.audiolevel_time = chrono::system_clock::to_time_t(al.time);
@@ -915,9 +922,7 @@ bool WebRadioInterface::send_stream(Socket& s, const std::string& stream)
                 (to_hex(srv.serviceId, 4) == stream or
                 (uint32_t)std::stoul(stream) == srv.serviceId)) {
             try {
-                auto& ph = phs.at(srv.serviceId);
-
-                lock.unlock();
+                auto ph = phs.at(srv.serviceId);
 
                 std::string http_contenttype;
 
@@ -941,27 +946,13 @@ bool WebRadioInterface::send_stream(Socket& s, const std::string& stream)
                 ProgrammeSender sender(move(s));
 
                 cerr << "Registering mp3 sender" << endl;
-                ph.registerSender(&sender);
+                ph->registerSender(&sender);
+                lock.unlock();
                 check_decoders_required();
                 sender.wait_for_termination();
-                sleep(5);
                 cerr << "Removing mp3 sender" << endl;
-                ph.removeSender(&sender);
+                ph->removeSender(&sender);
                 check_decoders_required();
-                bool b_IsProgActive = false;
-
-                for (auto b : programmes_being_decoded)
-                {
-                    if (b.second)
-                    {
-                        b_IsProgActive = true;
-                    }
-                }
-
-                if (!b_IsProgActive)
-                {
-                    rx->stop();
-                }
 
                 return true;
             }
@@ -979,10 +970,15 @@ bool WebRadioInterface::send_stream(Socket& s, const std::string& stream)
 
 bool WebRadioInterface::send_slide(Socket& s, const std::string& stream)
 {
-    for (const auto& wph : phs) {
+    std::map<SId_t, std::shared_ptr<WebProgrammeHandler>> handlers;
+    {
+        lock_guard<mutex> lock(rx_mut);
+        handlers = phs;
+    }
+    for (const auto& wph : handlers) {
         if (to_hex(wph.first, 4) == stream or
                 (uint32_t)std::stoul(stream) == wph.first) {
-            const auto mot = wph.second.getMOT();
+            const auto mot = wph.second->getMOT();
 
             if (mot.data.empty()) {
                 send_http_response(s, http_404, "404 Not Found\r\nSlide not available.\r\n");
@@ -1342,8 +1338,8 @@ void WebRadioInterface::handle_phs()
             }
 
             if (phs.count(s.serviceId) == 0) {
-                WebProgrammeHandler ph(s.serviceId, decode_settings.outputCodec);
-                phs.emplace(std::make_pair(s.serviceId, move(ph)));
+                phs.emplace(s.serviceId,
+                        make_shared<WebProgrammeHandler>(s.serviceId, decode_settings.outputCodec));
             }
         }
 
@@ -1395,8 +1391,8 @@ void WebRadioInterface::handle_phs()
                         // Switch to next programme once both DLS and Slideshow
                         // got decoded, but at most after 80 seconds
                         const auto now = system_clock::now();
-                        const auto mot = current_it->second.getMOT();
-                        const auto dls = current_it->second.getDLS();
+                        const auto mot = current_it->second->getMOT();
+                        const auto dls = current_it->second->getDLS();
                         // Slide and DLS received in the last 60 seconds?
                         const bool switchBecausePAD = (
                                 now - mot.time < seconds(60) and
@@ -1434,7 +1430,7 @@ void WebRadioInterface::handle_phs()
     {
         lock_guard<mutex> lock(rx_mut);
         for (auto& ph : phs) {
-            ph.second.cancelAll();
+            ph.second->cancelAll();
 
             const auto srv = rx->getService(ph.first);
             if (srv.serviceId != 0) {
