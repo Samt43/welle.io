@@ -14,6 +14,95 @@
   var g_TrackName = ""
   var img
 
+  const audioRetries = new WeakMap();
+
+  function setupAudioRetry(mediaTag) {
+    let timer;
+    let attempts = 0;
+    let active = false;
+    let retryPending = false;
+    let reloadPauses = 0;
+    let generation = 0;
+    const clearTimer = () => {
+      clearTimeout(timer);
+      timer = undefined;
+      retryPending = false;
+    };
+    const cancel = () => {
+      active = false;
+      generation++;
+      clearTimer();
+    };
+    const retry = () => {
+      if (!active || retryPending) return;
+      clearTimer();
+      if (attempts >= 3) {
+        cancel();
+        return;
+      }
+      const delay = 1000 * Math.pow(2, attempts++);
+      retryPending = true;
+      timer = setTimeout(() => {
+        timer = undefined;
+        retryPending = false;
+        if (!mediaTag.paused) reloadPauses++;
+        mediaTag.load();
+        play();
+      }, delay);
+    };
+    const watch = () => {
+      if (!active || retryPending || timer !== undefined) return;
+      timer = setTimeout(retry, 15000);
+    };
+    const play = () => {
+      if (!active) attempts = 0;
+      active = true;
+      const currentGeneration = ++generation;
+      watch();
+      const playback = mediaTag.play();
+      if (playback) {
+        playback.catch(error => {
+          if (currentGeneration !== generation) return;
+          if (error.name === "NotAllowedError") cancel();
+          else if (error.name !== "AbortError") retry();
+        });
+      }
+    };
+    audioRetries.set(mediaTag, {
+      reset: () => { cancel(); attempts = 0; },
+      cancel,
+      play
+    });
+    mediaTag.addEventListener("play", () => {
+      if (!active) attempts = 0;
+      active = true;
+      watch();
+    });
+    mediaTag.addEventListener("playing", () => {
+      if (!active) return;
+      clearTimer();
+      attempts = 0;
+    });
+    mediaTag.addEventListener("waiting", watch);
+    mediaTag.addEventListener("stalled", watch);
+    mediaTag.addEventListener("pause", () => {
+      if (reloadPauses > 0) {
+        reloadPauses--;
+        return;
+      }
+      if (!mediaTag.error) cancel();
+    });
+    mediaTag.addEventListener("ended", cancel);
+    mediaTag.addEventListener("error", () => {
+      if (mediaTag.error && (mediaTag.error.code === 2 || mediaTag.error.code === 4)) retry();
+      else cancel();
+    });
+  }
+
+  function playAudio(mediaTag) {
+    audioRetries.get(mediaTag).play();
+  }
+
   function updateImg() {
     img.src = "";
     img.src = window.location.origin + '/slide/' + g_TrackUrl.slice(-6) + '?' + (new Date()).getTime();
@@ -86,7 +175,14 @@
     // deepcopy playlists to avoid shared mutation
     let playlist = [...playlists[playlistUrl]];
     let trackUrl = playlist[trackIndex].url;
+    const streamUrl = new URL(trackUrl, window.location.href);
+    if (window.location.protocol === "https:" && streamUrl.protocol === "http:" &&
+        streamUrl.host === window.location.host) {
+      streamUrl.protocol = "https:";
+      trackUrl = streamUrl.href;
+    }
     let trackName = playlist[trackIndex].name;
+    audioRetries.get(mediaTag).reset();
     // swich to the next segment
     mediaTag.setAttribute("src", trackUrl);
 
@@ -102,7 +198,7 @@
   function changeTrackFromIndex(mediaTag, index) {
     mediaTag.setAttribute("track-index", index);
     updateTrackSelection(mediaTag, index);
-    updateSrc(mediaTag, () => mediaTag.play());
+    updateSrc(mediaTag, () => playAudio(mediaTag));
   }
 
   function updateTrackSelection(mediaTag, selectedIndex) {
@@ -256,6 +352,7 @@
   }
 
   function processTag(mediaTag) {
+    setupAudioRetry(mediaTag);
     const canPlayClaim = mediaTag.canPlayType('audio/x-mpegurl');
     let supportsPlaylists = !!canPlayClaim;
     if (canPlayClaim == 'maybe') { // yes, seriously: specced as you only know when you try
