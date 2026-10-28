@@ -10,14 +10,13 @@
   const MAX_PLAYLIST_LENGTH = 1000;
   const PLAYLIST_MIME_TYPES = ["audio/x-mpegurl", "audio/mpegurl", "application/vnd.apple.mpegurl", "application/mpegurl", "application/x-mpegurl"];
 
-  const SERVER_URL = "radio.home"
   var g_TrackUrl = ""
   var g_TrackName = ""
   var img
 
   function updateImg() {
     img.src = "";
-    img.src = 'http://' + SERVER_URL + '/slide/' + g_TrackUrl.slice(-6) + '?' + (new Date()).getTime();
+    img.src = window.location.origin + '/slide/' + g_TrackUrl.slice(-6) + '?' + (new Date()).getTime();
     img.alt = getName(g_TrackName)
   }
 
@@ -102,7 +101,19 @@
 
   function changeTrackFromIndex(mediaTag, index) {
     mediaTag.setAttribute("track-index", index);
+    updateTrackSelection(mediaTag, index);
     updateSrc(mediaTag, () => mediaTag.play());
+  }
+
+  function updateTrackSelection(mediaTag, selectedIndex) {
+    const shell = mediaTag.closest(".player-shell");
+    if (!shell) return;
+
+    shell.querySelectorAll(".radio-track").forEach(track => {
+      const selected = Number(track.dataset.trackIndex) === Number(selectedIndex);
+      track.classList.toggle("is-current", selected);
+      track.setAttribute("aria-pressed", selected ? "true" : "false");
+    });
   }
 
   function changeTrack(mediaTag, diff) {
@@ -148,7 +159,7 @@
     controls.style.display = "flex";
     controls.style.justifyContent = "space-between";
     const styleTag = document.createElement("style");
-    styleTag.innerHTML = ".m3u-player--left:hover, .m3u-player--right:hover {color: wheat; background-color: DarkSlateGray}";
+    styleTag.innerHTML = ".m3u-player--left, .m3u-player--right {color: #00bdd2; cursor: pointer} .m3u-player--left:hover, .m3u-player--right:hover {color: #86dd25} .m3u-player--left:focus-visible, .m3u-player--right:focus-visible {outline: 2px solid #86dd25; outline-offset: 2px}";
 
 
     wrapper.appendChild(styleTag);
@@ -167,12 +178,26 @@
 
     left.innerHTML = "&lt;";
     left.style.fontSize = "5em"
+    left.setAttribute("role", "button");
+    left.setAttribute("aria-label", "Previous track");
+    left.tabIndex = 0;
     // the tag here and textContent shows the
     // escaped version
     left.onclick = () => changeTrack(mediaTag, -1);
     right.innerHTML = "&gt;";
     right.style.fontSize = "5em"
+    right.setAttribute("role", "button");
+    right.setAttribute("aria-label", "Next track");
+    right.tabIndex = 0;
     right.onclick = () => changeTrack(mediaTag, +1);
+    [left, right].forEach((control, index) => {
+      control.onkeydown = event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          changeTrack(mediaTag, index === 0 ? -1 : 1);
+        }
+      };
+    });
     fetchPlaylist(
       url,
       () => {
@@ -198,18 +223,29 @@
     list.style.gap = "10px";
     let trackNumber = 0
     tracks.forEach(element => {
-      radioName = document.createElement('span');
+      const radioName = document.createElement('span');
       radioName.style.display = "inline-flex";
       radioName.style.flex = "1";
       radioName.style.minWidth = 200;
       radioName.style.height = 100;
       radioName.style.alignItems = "center";
       radioName.style.justifyContent = "center";
-      radioName.style.background = "grey"
+      radioName.className = "radio-track";
+      radioName.dataset.trackIndex = trackNumber;
+      radioName.setAttribute("role", "button");
+      radioName.setAttribute("aria-pressed", trackNumber === Number(mediaTag.getAttribute("track-index")) ? "true" : "false");
+      radioName.tabIndex = 0;
+      radioName.classList.toggle("is-current", trackNumber === Number(mediaTag.getAttribute("track-index")));
       const textNode = document.createTextNode(getName(element.name));
 
       ((trackNumber) => {
       radioName.onclick = function() { changeTrackFromIndex(mediaTag, trackNumber) }
+      radioName.onkeydown = function(event) {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          radioName.click();
+        }
+      }
       }
       )(trackNumber);
 
@@ -248,11 +284,64 @@
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" href="/welle-icon.png">
   <link rel="apple-touch-icon" href="/welle-icon.png">
+  <style>
+    body {
+      margin: 0;
+      background: #0b1110;
+      color: #e6efec;
+      font-family: "Trebuchet MS", sans-serif;
+    }
+    .player-shell {
+      width: 80%;
+      margin: 10px auto 20px;
+    }
+    .player-heading {
+      margin: 0 0 0.45em;
+      color: #f2f7f5;
+      font-size: 1.5em;
+    }
+    #logo {
+      overflow: hidden;
+      border: 1px solid #29403c;
+      border-radius: 5px;
+      background: #050908;
+    }
+    #player {
+      accent-color: #00bdd2;
+    }
+    .radio-track {
+      border: 1px solid #304541;
+      border-radius: 4px;
+      background: #1b2927;
+      color: #dce8e4;
+      text-align: center;
+      cursor: pointer;
+      transition: background-color 120ms ease, border-color 120ms ease;
+    }
+    .radio-track:hover {
+      border-color: #00bdd2;
+      background: #263d39;
+    }
+    .radio-track.is-current {
+      border-color: #00bdd2;
+      background: #154744;
+      color: #ffffff;
+    }
+    .radio-track:focus-visible {
+      outline: 2px solid #86dd25;
+      outline-offset: 2px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .radio-track {
+        transition: none;
+      }
+    }
+  </style>
 </head>
 
-<body id="body" style="background-color:black; color:white;">
-  <div style="width: 80%;margin-left: 10%; margin-right: 10%;">
-    <h1>MatMat Radio !</h1>
+<body id="body">
+  <div class="player-shell">
+    <h1 class="player-heading">MatMat Radio</h1>
     <div id="logo" style="position: relative; width: 100%; aspect-ratio: 320/240; max-width: 640px; margin: auto;" >
     <div style="position: absolute; width: 100%">
       <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0" y="0" width="100%" height="auto" viewBox="0, 0, 100, 59">

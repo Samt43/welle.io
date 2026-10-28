@@ -1,4 +1,4 @@
-var CACHE_NAME = "welle-cli-shell-v2";
+var CACHE_NAME = "welle-cli-shell-v3";
 var SHELL_PATHS = ["/player.html", "/manifest.webmanifest", "/welle-icon.png"];
 
 self.addEventListener("install", function(event) {
