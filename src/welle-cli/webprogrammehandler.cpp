@@ -35,6 +35,8 @@ using namespace std;
 #define MSG_NOSIGNAL 0
 #endif
 
+#define HAVE_FLAC 1
+
 class IEncoder 
 {
     public:

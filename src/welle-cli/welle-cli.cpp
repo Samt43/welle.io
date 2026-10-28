@@ -64,7 +64,7 @@ extern "C" {
 #else
 #define VERSION "unknown"
 #endif
-
+#define HAVE_FLAC 1
 using namespace std;
 
 using namespace nlohmann;
@@ -592,7 +592,7 @@ int main(int argc, char **argv)
         }
         else if (options.outputcodec == "flac")
         {
-            #ifdef HAS_FLAC
+            #ifdef HAVE_FLAC
                 ds.outputCodec = OutputCodec::FLAC;
             #else
                 cerr << "Flac support not compiled. Please enable flac support." << std::endl;

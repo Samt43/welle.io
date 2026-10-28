@@ -1,53 +1,106 @@
 #EXTM3U
 #EXTINF:-1 sid="5D0xf650",SUD RADIO       
-http://10.0.0.1:8000/radio/5D0xf650
+http://radio.home/radio/5D0xf650
 #EXTINF:-1 sid="5D0xf209",BLEU ISERE      
-http://10.0.0.1:8000/radio/5D0xf209
+http://radio.home/radio/5D0xf209
 #EXTINF:-1 sid="5D0xf865",RADIO SCOOP     
-http://10.0.0.1:8000/radio/5D0xf865
+http://radio.home/radio/5D0xf865
 #EXTINF:-1 sid="5D0xf9f1",CAPSAO          
-http://10.0.0.1:8000/radio/5D0xf9f1
+http://radio.home/radio/5D0xf9f1
 #EXTINF:-1 sid="5D0xf223",TSF JAZZ        
-http://10.0.0.1:8000/radio/5D0xf223
+http://radio.home/radio/5D0xf223
 #EXTINF:-1 sid="5D0xf9f5",Melody          
-http://10.0.0.1:8000/radio/5D0xf9f5
+http://radio.home/radio/5D0xf9f5
 #EXTINF:-1 sid="5D0xf22b",Radio ORIENT    
-http://10.0.0.1:8000/radio/5D0xf22b
+http://radio.home/radio/5D0xf22b
 #EXTINF:-1 sid="5D0xf22f",J A Z Z RADIO   
-http://10.0.0.1:8000/radio/5D0xf22f
+http://radio.home/radio/5D0xf22f
 #EXTINF:-1 sid="5D0xf835",VIRAGE RADIO    
-http://10.0.0.1:8000/radio/5D0xf835
+http://radio.home/radio/5D0xf835
 #EXTINF:-1 sid="5D0xf21d",OUI FM dab+     
-http://10.0.0.1:8000/radio/5D0xf21d
+http://radio.home/radio/5D0xf21d
 #EXTINF:-1 sid="5D0xf20c",RCF ISERE       
-http://10.0.0.1:8000/radio/5D0xf20c
+http://radio.home/radio/5D0xf20c
 #EXTINF:-1 sid="5D0xf887",TONIC RADIO     
-http://10.0.0.1:8000/radio/5D0xf887
+http://radio.home/radio/5D0xf887
 #EXTINF:-1 sid="5D0xf21b",ADO dab+        
-http://10.0.0.1:8000/radio/5D0xf21b
+http://radio.home/radio/5D0xf21b
 #EXTINF:-1 sid="0xf229",BEUR FM         
-http://10.0.0.1:8000/radio/9C0xf229
+http://radio.home/radio/9C0xf229
 #EXTINF:-1 sid="0xf882",I S A           
-http://10.0.0.1:8000/radio/9C0xf882
+http://radio.home/radio/9C0xf882
 #EXTINF:-1 sid="0xf8a7",R K S           
-http://10.0.0.1:8000/radio/9C0xf8a7
+http://radio.home/radio/9C0xf8a7
 #EXTINF:-1 sid="0xf891",Campus Grenoble 
-http://10.0.0.1:8000/radio/9C0xf891
+http://radio.home/radio/9C0xf891
 #EXTINF:-1 sid="0xf8a1",MAX RADIO       
-http://10.0.0.1:8000/radio/9C0xf8a1
+http://radio.home/radio/9C0xf8a1
 #EXTINF:-1 sid="0xf895",New's FM        
-http://10.0.0.1:8000/radio/9C0xf895
+http://radio.home/radio/9C0xf895
 #EXTINF:-1 sid="0xf880",HOT RADIO       
-http://10.0.0.1:8000/radio/9C0xf880
+http://radio.home/radio/9C0xf880
 #EXTINF:-1 sid="0xf431",ALPES 1 GRENOBLE
-http://10.0.0.1:8000/radio/9C0xf431
+http://radio.home/radio/9C0xf431
 #EXTINF:-1 sid="0xf22c",FG. DJ Radio    
-http://10.0.0.1:8000/radio/9C0xf22c
+http://radio.home/radio/9C0xf22c
 #EXTINF:-1 sid="0xf8fe",RADIO PITCHOUN  
-http://10.0.0.1:8000/radio/9C0xf8fe
+http://radio.home/radio/9C0xf8fe
 #EXTINF:-1 sid="0xf220",NRJ GRENOBLE    
-http://10.0.0.1:8000/radio/9C0xf220
+http://radio.home/radio/9C0xf220
 #EXTINF:-1 sid="0xf218",NOSTALGIGRENOBLE
-http://10.0.0.1:8000/radio/9C0xf218
+http://radio.home/radio/9C0xf218
 #EXTINF:-1 sid="0xf224",CHERIEFMGRENOBLE
-http://10.0.0.1:8000/radio/9C0xf224
+http://radio.home/radio/9C0xf224
+#EXTINF:-1 sid="0xf202",FRANCE CULTURE  
+http://radio.home/radio/7B0xf202
+#EXTINF:-1 sid="0xf20d",RFM             
+http://radio.home/radio/7B0xf20d
+#EXTINF:-1 sid="0xf204",FIP             
+http://radio.home/radio/7B0xf204
+#EXTINF:-1 sid="0xf208",MOUV'           
+http://radio.home/radio/7B0xf208
+#EXTINF:-1 sid="0xf20f",KTO Radio       
+http://radio.home/radio/7B0xf20f
+#EXTINF:-1 sid="0xf2fd",BFM RADIO       
+http://radio.home/radio/7B0xf2fd
+#EXTINF:-1 sid="0xf20e",EUROPE 2        
+http://radio.home/radio/7B0xf20e
+#EXTINF:-1 sid="0xf227",BFM BUSINESS    
+http://radio.home/radio/7B0xf227
+#EXTINF:-1 sid="0xf203",FRANCE MUSIQUE  
+http://radio.home/radio/7B0xf203
+#EXTINF:-1 sid="0xf213",EUROPE 1        
+http://radio.home/radio/7B0xf213
+#EXTINF:-1 sid="0xf206",FRANCE INFO     
+http://radio.home/radio/7B0xf206
+#EXTINF:-1 sid="0xf216",RMC             
+http://radio.home/radio/7B0xf216
+#EXTINF:-1 sid="0xf201",FRANCE INTER    
+http://radio.home/radio/7B0xf201
+#EXTINF:-1 sid="0xf225",M RADIO         
+http://radio.home/radio/7A0xf225
+#EXTINF:-1 sid="0xf2f9",CHERIE FM       
+http://radio.home/radio/7A0xf2f9
+#EXTINF:-1 sid="0xf217",FUN RADIO       
+http://radio.home/radio/7A0xf217
+#EXTINF:-1 sid="0xf211",RTL             
+http://radio.home/radio/7A0xf211
+#EXTINF:-1 sid="0xf2f8",NRJ             
+http://radio.home/radio/7A0xf2f8
+#EXTINF:-1 sid="0xf214",SKYROCK         
+http://radio.home/radio/7A0xf214
+#EXTINF:-1 sid="0xf2fe",AIRZEN RADIO    
+http://radio.home/radio/7A0xf2fe
+#EXTINF:-1 sid="0xf2fa",NOSTALGIE       
+http://radio.home/radio/7A0xf2fa
+#EXTINF:-1 sid="0xf21c",LATINA dab+     
+http://radio.home/radio/7A0xf21c
+#EXTINF:-1 sid="0xf226",RIRE ET CHANSONS
+http://radio.home/radio/7A0xf226
+#EXTINF:-1 sid="0xf2fc",SKYROCK KLASSIKS
+http://radio.home/radio/7A0xf2fc
+#EXTINF:-1 sid="0xf215",RTL2            
+http://radio.home/radio/7A0xf215
+#EXTINF:-1 sid="0xf221",RADIO CLASSIQUE 
+http://radio.home/radio/7A0xf221
+
