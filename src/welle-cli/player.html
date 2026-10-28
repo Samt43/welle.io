@@ -175,6 +175,7 @@
       img.hidden = true;
       artworkStation = g_TrackUrl;
       artworkUrl = "";
+      document.getElementById("artworkBackdrop").style.backgroundImage = "none";
     }
     const pending = new Image();
     const stationName = getName(g_TrackName);
@@ -183,6 +184,8 @@
       img.alt = stationName;
       img.src = pending.src;
       artworkUrl = pending.src;
+      document.getElementById("artworkBackdrop").style.backgroundImage =
+        "url(" + JSON.stringify(artworkUrl) + ")";
       updateMediaMetadata();
     };
     pending.src = window.location.origin + '/slide/' + g_TrackUrl.slice(-6) + '?' + Date.now();
@@ -487,6 +490,13 @@
   document.addEventListener('DOMContentLoaded', () => {
     const nodes = document.querySelectorAll("audio,video");
     nodes.forEach(processTag);
+    const panel = document.getElementById("playbackPanel");
+    const reservePanelSpace = () => {
+      document.documentElement.style.setProperty("--playback-panel-height",
+        panel.getBoundingClientRect().height + "px");
+    };
+    reservePanelSpace();
+    new ResizeObserver(reservePanelSpace).observe(panel);
   });
   // @license-end
 
@@ -503,19 +513,41 @@
   <link rel="icon" type="image/png" href="/welle-icon.png">
   <link rel="apple-touch-icon" href="/welle-icon.png">
   <style>
+    html {
+      scroll-padding-bottom: var(--playback-panel-height, 160px);
+    }
     body {
       --surface: #0b1110;
       --line: #304541;
       --accent: #00bdd2;
       --focus: #86dd25;
       margin: 0;
+      padding-bottom: var(--playback-panel-height, 160px);
       background: var(--surface);
       color: #e6efec;
       font-family: "Trebuchet MS", sans-serif;
+      isolation: isolate;
+    }
+    #artworkBackdrop {
+      position: fixed;
+      inset: -40px;
+      z-index: -1;
+      pointer-events: none;
+      background-position: center;
+      background-size: cover;
+      background-repeat: no-repeat;
+      filter: blur(32px);
+      opacity: 0.3;
     }
     .player-shell {
-      width: 80%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 80%) minmax(0, 1fr);
+      width: 100%;
       margin: 10px auto 20px;
+    }
+    .player-shell > * {
+      grid-column: 2;
+      min-width: 0;
     }
     .player-heading {
       margin: 0 0 0.45em;
@@ -555,12 +587,22 @@
       outline-offset: 2px;
     }
     #playbackPanel {
-      position: sticky;
-      top: 0;
+      box-sizing: border-box;
+      position: fixed;
+      inset-inline: 0;
+      bottom: 0;
       z-index: 2;
-      padding: 8px 0;
+      padding: 8px max(12px, env(safe-area-inset-right))
+        calc(8px + env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
       background: var(--surface);
-      border-bottom: 1px solid var(--line);
+      border-top: 1px solid var(--line);
+    }
+    @supports ((backdrop-filter: blur(16px)) or (-webkit-backdrop-filter: blur(16px))) {
+      #playbackPanel {
+        background: rgba(11, 17, 16, 0.65);
+        -webkit-backdrop-filter: blur(16px);
+        backdrop-filter: blur(16px);
+      }
     }
     .transport > div {
       align-items: center;
@@ -706,7 +748,7 @@
     }
     @media (max-width: 600px) {
       .player-shell {
-        width: calc(100% - 24px);
+        grid-template-columns: 12px minmax(0, 1fr) 12px;
         margin-top: 12px;
       }
       #logo {
@@ -741,6 +783,7 @@
 </head>
 
 <body id="body">
+  <div id="artworkBackdrop" aria-hidden="true"></div>
   <div class="player-shell">
     <h1 class="player-heading">MatMat Radio</h1>
     <div id="logo" style="position: relative; width: 100%; aspect-ratio: 320/240; max-width: 640px; margin: auto;" >
