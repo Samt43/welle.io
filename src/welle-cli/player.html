@@ -13,8 +13,49 @@
   var g_TrackUrl = ""
   var g_TrackName = ""
   var img
+  let artworkRequest = 0;
+  let artworkStation = "";
+  let artworkUrl = "";
+
+  function readPreference(key, fallback) {
+    try {
+      const value = localStorage.getItem("matmat-radio-" + key);
+      return value === null ? fallback : JSON.parse(value);
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function savePreference(key, value) {
+    try {
+      localStorage.setItem("matmat-radio-" + key, JSON.stringify(value));
+    } catch (error) {
+    }
+  }
+
+  const savedFavorites = readPreference("favorites", []);
+  const favorites = new Set(Array.isArray(savedFavorites) ?
+    savedFavorites.filter(value => typeof value === "string") : []);
+
+  function updateMediaMetadata() {
+    if (!("mediaSession" in navigator) || typeof MediaMetadata === "undefined") return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: getName(g_TrackName).trim(),
+      artist: "MatMat Radio",
+      artwork: artworkUrl ? [{ src: artworkUrl }] :
+        [{ src: window.location.origin + "/welle-icon.png", sizes: "512x512", type: "image/png" }]
+    });
+  }
 
   const audioRetries = new WeakMap();
+
+  function setPlaybackStatus(message, retryable = false) {
+    document.getElementById("playbackStatus").textContent = message;
+    document.getElementById("retryPlayback").hidden = !retryable;
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = message === "Playing" ? "playing" : "paused";
+    }
+  }
 
   function setupAudioRetry(mediaTag) {
     let timer;
@@ -38,9 +79,11 @@
       clearTimer();
       if (attempts >= 3) {
         cancel();
+        setPlaybackStatus("Connection failed", true);
         return;
       }
       const delay = 1000 * Math.pow(2, attempts++);
+      setPlaybackStatus("Retrying " + attempts + "/3");
       retryPending = true;
       timer = setTimeout(() => {
         timer = undefined;
@@ -58,12 +101,16 @@
       if (!active) attempts = 0;
       active = true;
       const currentGeneration = ++generation;
+      setPlaybackStatus("Connecting...");
       watch();
       const playback = mediaTag.play();
       if (playback) {
         playback.catch(error => {
           if (currentGeneration !== generation) return;
-          if (error.name === "NotAllowedError") cancel();
+          if (error.name === "NotAllowedError") {
+            cancel();
+            setPlaybackStatus("Playback blocked", true);
+          }
           else if (error.name !== "AbortError") retry();
         });
       }
@@ -71,31 +118,49 @@
     audioRetries.set(mediaTag, {
       reset: () => { cancel(); attempts = 0; },
       cancel,
-      play
+      play,
+      restart: () => {
+        cancel();
+        attempts = 0;
+        if (!mediaTag.paused) reloadPauses++;
+        mediaTag.load();
+        play();
+      }
     });
     mediaTag.addEventListener("play", () => {
       if (!active) attempts = 0;
       active = true;
+      setPlaybackStatus("Connecting...");
       watch();
     });
     mediaTag.addEventListener("playing", () => {
       if (!active) return;
       clearTimer();
       attempts = 0;
+      setPlaybackStatus("Playing");
     });
-    mediaTag.addEventListener("waiting", watch);
+    mediaTag.addEventListener("waiting", () => {
+      if (active && !retryPending) setPlaybackStatus("Buffering...");
+      watch();
+    });
     mediaTag.addEventListener("stalled", watch);
     mediaTag.addEventListener("pause", () => {
       if (reloadPauses > 0) {
         reloadPauses--;
         return;
       }
-      if (!mediaTag.error) cancel();
+      if (!mediaTag.error) {
+        cancel();
+        setPlaybackStatus("Paused");
+      }
     });
     mediaTag.addEventListener("ended", cancel);
     mediaTag.addEventListener("error", () => {
       if (mediaTag.error && (mediaTag.error.code === 2 || mediaTag.error.code === 4)) retry();
-      else cancel();
+      else {
+        cancel();
+        setPlaybackStatus("Audio unavailable", true);
+      }
     });
   }
 
@@ -104,9 +169,23 @@
   }
 
   function updateImg() {
-    img.src = "";
-    img.src = window.location.origin + '/slide/' + g_TrackUrl.slice(-6) + '?' + (new Date()).getTime();
-    img.alt = getName(g_TrackName)
+    if (!img || !g_TrackUrl) return;
+    const request = ++artworkRequest;
+    if (artworkStation !== g_TrackUrl) {
+      img.hidden = true;
+      artworkStation = g_TrackUrl;
+      artworkUrl = "";
+    }
+    const pending = new Image();
+    const stationName = getName(g_TrackName);
+    pending.onload = () => {
+      if (request !== artworkRequest) return;
+      img.alt = stationName;
+      img.src = pending.src;
+      artworkUrl = pending.src;
+      updateMediaMetadata();
+    };
+    pending.src = window.location.origin + '/slide/' + g_TrackUrl.slice(-6) + '?' + Date.now();
   }
 
   function stripUrlParameters(link) {
@@ -148,14 +227,20 @@
   function fetchPlaylist(url, onload, onerror) {
     const playlistFetcher = new XMLHttpRequest();
     playlistFetcher.open("GET", url, true);
+    playlistFetcher.timeout = 15000;
     playlistFetcher.responseType = "blob"; // to get a mime type
     playlistFetcher.onload = () => {
-      if (PLAYLIST_MIME_TYPES.includes(playlistFetcher.response.type)) { // security check to ensure that filters have run
+      if (playlistFetcher.status === 200 && PLAYLIST_MIME_TYPES.includes(playlistFetcher.response.type)) {
         const reader = new FileReader();
         const load = onload; // propagate to inner scope
         reader.addEventListener("loadend", e => {
-          playlists[url] = parsePlaylist(reader.result);
-          onload();
+          try {
+            playlists[url] = parsePlaylist(reader.result).slice(0, MAX_PLAYLIST_LENGTH);
+            if (!playlists[url].length) throw new Error("Empty playlist");
+            onload();
+          } catch (error) {
+            onerror();
+          }
         });
         reader.readAsText(playlistFetcher.response);
       } else {
@@ -164,7 +249,8 @@
       }
     };
     playlistFetcher.onerror = onerror;
-    playlistFetcher.abort = onerror;
+    playlistFetcher.onabort = onerror;
+    playlistFetcher.ontimeout = onerror;
     playlistFetcher.send();
   }
 
@@ -192,6 +278,9 @@
     g_TrackUrl = trackUrl
     g_TrackName = trackName
     updateImg();
+    updateMediaMetadata();
+    savePreference("last-station", playlist[trackIndex].url);
+    setPlaybackStatus("Ready");
     callback();
   }
 
@@ -234,10 +323,12 @@
     mediaTag.setAttribute("track-index", 0);
     const url = mediaTag.getAttribute("playlist");
     const wrapper = mediaTag.parentElement.insertBefore(document.createElement("div"), mediaTag);
+    wrapper.className = "transport";
     const controls = document.createElement("div");
-    const left = document.createElement("span");
+    const left = document.createElement("button");
     const title = document.createElement("span");
-    const right = document.createElement("span");
+    const right = document.createElement("button");
+    left.type = right.type = "button";
     controls.appendChild(left);
     controls.appendChild(title);
     controls.appendChild(right);
@@ -247,8 +338,7 @@
     title.style.overflow = "hidden";
     title.style.textOverflow = "ellipsis";
     title.style.whiteSpace = "nowrap";
-    title.style.opacity = "0.3";
-    title.style.direction = "rtl"; // for truncation on the left
+    title.style.minWidth = "0";
     title.style.paddingLeft = "0.5em";
     title.style.paddingRight = "0.5em";
     title.style.margin = "auto";
@@ -261,6 +351,9 @@
     wrapper.appendChild(styleTag);
 
     img = document.createElement('img');
+    img.hidden = true;
+    img.onload = () => { img.hidden = img.src !== artworkUrl; };
+    img.onerror = () => { img.hidden = true; };
     img.style.width = "100%"
     img.style.position = "absolute"
     document.getElementById("logo").appendChild(img)
@@ -270,99 +363,126 @@
 
     // appending the media tag to the wrapper removes it from the outer scope but keeps the event listeners
     wrapper.appendChild(mediaTag);
+    const retryAudio = () => {
+      audioRetries.get(mediaTag).restart();
+    };
+    document.getElementById("retryPlayback").onclick = retryAudio;
 
 
     left.innerHTML = "&lt;";
-    left.style.fontSize = "5em"
     left.setAttribute("role", "button");
     left.setAttribute("aria-label", "Previous track");
+    left.title = "Previous station";
     left.tabIndex = 0;
     // the tag here and textContent shows the
     // escaped version
     left.onclick = () => changeTrack(mediaTag, -1);
     right.innerHTML = "&gt;";
-    right.style.fontSize = "5em"
     right.setAttribute("role", "button");
     right.setAttribute("aria-label", "Next track");
+    right.title = "Next station";
     right.tabIndex = 0;
     right.onclick = () => changeTrack(mediaTag, +1);
-    [left, right].forEach((control, index) => {
-      control.onkeydown = event => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          changeTrack(mediaTag, index === 0 ? -1 : 1);
-        }
+    left.disabled = right.disabled = true;
+    document.getElementById("stationSearch").oninput = () => updateRadioList(mediaTag);
+    document.getElementById("favoritesOnly").setAttribute("aria-pressed",
+      String(readPreference("favorites-only", false) === true));
+    document.getElementById("favoritesOnly").onclick = event => {
+      const filter = event.currentTarget;
+      const enabled = filter.getAttribute("aria-pressed") !== "true";
+      filter.setAttribute("aria-pressed", String(enabled));
+      savePreference("favorites-only", enabled);
+      updateRadioList(mediaTag);
+    };
+    if ("mediaSession" in navigator) {
+      const actions = {
+        play: () => { if (!left.disabled) playAudio(mediaTag); },
+        pause: () => mediaTag.pause(),
+        previoustrack: () => { if (!left.disabled) changeTrack(mediaTag, -1); },
+        nexttrack: () => { if (!right.disabled) changeTrack(mediaTag, 1); }
       };
-    });
-    fetchPlaylist(
+      Object.entries(actions).forEach(([action, handler]) => {
+        try {
+          navigator.mediaSession.setActionHandler(action, handler);
+        } catch (error) {
+        }
+      });
+    }
+    const loadStations = () => {
+      setPlaybackStatus("Loading stations...");
+      fetchPlaylist(
       url,
       () => {
+        const savedStation = readPreference("last-station", null);
+        const savedIndex = playlists[url].findIndex(track => track.url === savedStation);
+        mediaTag.setAttribute("track-index", savedIndex < 0 ? 0 : savedIndex);
         updateSrc(mediaTag, () => null);
-        mediaTag.addEventListener("ended", event => {
-          if (mediaTag.currentTime >= mediaTag.duration) {
-            changeTrack(mediaTag, +1);
-          }
-        });
-
-
+        left.disabled = right.disabled = false;
+        document.getElementById("retryPlayback").onclick = retryAudio;
         updateRadioList(mediaTag);
       },
-      () => null);
+      () => {
+        setPlaybackStatus("Stations unavailable", true);
+        document.getElementById("retryPlayback").onclick = loadStations;
+      });
+    };
+    mediaTag.addEventListener("ended", () => {
+      if (!left.disabled) changeTrack(mediaTag, 1);
+    });
+    loadStations();
   }
 
   function updateRadioList(mediaTag) {
     const tracks = playlists[mediaTag.getAttribute("playlist")];
-    let list = document.getElementById("radioList")
-    list.style.display = "flex"
-    list.style.flexDirection = "row"; /* par défaut axe horizontal */
-    list.style.flexWrap = "wrap";
-    list.style.gap = "10px";
-    let trackNumber = 0
-    tracks.forEach(element => {
-      const radioName = document.createElement('span');
-      radioName.style.display = "inline-flex";
-      radioName.style.flex = "1";
-      radioName.style.minWidth = 200;
-      radioName.style.height = 100;
-      radioName.style.alignItems = "center";
-      radioName.style.justifyContent = "center";
+    const list = document.getElementById("radioList");
+    const search = document.getElementById("stationSearch");
+    const filter = document.getElementById("favoritesOnly");
+    search.disabled = filter.disabled = false;
+    const query = search.value.trim().toLocaleLowerCase();
+    const visible = tracks.map((track, index) => ({ track, index }))
+      .filter(({ track }) => getName(track.name).toLocaleLowerCase().includes(query) &&
+        (filter.getAttribute("aria-pressed") !== "true" || favorites.has(track.url)))
+      .sort((first, second) => Number(favorites.has(second.track.url)) -
+        Number(favorites.has(first.track.url)) || first.index - second.index);
+    list.replaceChildren();
+    document.getElementById("emptyStations").hidden = visible.length > 0;
+    visible.forEach(({ track, index }) => {
+      const entry = document.createElement("div");
+      entry.className = "station-entry";
+      const radioName = document.createElement("button");
+      radioName.type = "button";
       radioName.className = "radio-track";
-      radioName.dataset.trackIndex = trackNumber;
-      radioName.setAttribute("role", "button");
-      radioName.setAttribute("aria-pressed", trackNumber === Number(mediaTag.getAttribute("track-index")) ? "true" : "false");
-      radioName.tabIndex = 0;
-      radioName.classList.toggle("is-current", trackNumber === Number(mediaTag.getAttribute("track-index")));
-      const textNode = document.createTextNode(getName(element.name));
-
-      ((trackNumber) => {
-      radioName.onclick = function() { changeTrackFromIndex(mediaTag, trackNumber) }
-      radioName.onkeydown = function(event) {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          radioName.click();
-        }
-      }
-      }
-      )(trackNumber);
-
-      radioName.appendChild(textNode);
-      list.appendChild(radioName);
-      trackNumber++
+      radioName.dataset.trackIndex = index;
+      const selected = index === Number(mediaTag.getAttribute("track-index"));
+      radioName.setAttribute("aria-pressed", String(selected));
+      radioName.classList.toggle("is-current", selected);
+      radioName.textContent = getName(track.name).trim();
+      radioName.title = radioName.textContent;
+      radioName.onclick = () => changeTrackFromIndex(mediaTag, index);
+      const favorite = document.createElement("button");
+      favorite.type = "button";
+      favorite.className = "favorite-toggle";
+      favorite.dataset.trackIndex = index;
+      favorite.innerHTML = favorites.has(track.url) ? "&#9733;" : "&#9734;";
+      favorite.setAttribute("aria-pressed", String(favorites.has(track.url)));
+      favorite.title = (favorites.has(track.url) ? "Remove favorite: " : "Add favorite: ") + radioName.textContent;
+      favorite.setAttribute("aria-label", favorite.title);
+      favorite.onclick = () => {
+        if (favorites.has(track.url)) favorites.delete(track.url);
+        else favorites.add(track.url);
+        savePreference("favorites", Array.from(favorites));
+        updateRadioList(mediaTag);
+        const nextFocus = list.querySelector('.favorite-toggle[data-track-index="' + index + '"]') || filter;
+        nextFocus.focus({ preventScroll: true });
+      };
+      entry.append(radioName, favorite);
+      list.appendChild(entry);
     });
   }
 
   function processTag(mediaTag) {
     setupAudioRetry(mediaTag);
-    const canPlayClaim = mediaTag.canPlayType('audio/x-mpegurl');
-    let supportsPlaylists = !!canPlayClaim;
-    if (canPlayClaim == 'maybe') { // yes, seriously: specced as you only know when you try
-      supportsPlaylists = false;
-    }
-    if (!supportsPlaylists) {
-      if (isPlaylist(mediaTag.getAttribute("src"))) {
-        initPlayer(mediaTag);
-      }
-    }
+    if (isPlaylist(mediaTag.getAttribute("src"))) initPlayer(mediaTag);
   }
   document.addEventListener('DOMContentLoaded', () => {
     const nodes = document.querySelectorAll("audio,video");
@@ -377,14 +497,19 @@
 <head>
   <title>MatMat Radio</title>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#443634">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" type="image/png" href="/welle-icon.png">
   <link rel="apple-touch-icon" href="/welle-icon.png">
   <style>
     body {
+      --surface: #0b1110;
+      --line: #304541;
+      --accent: #00bdd2;
+      --focus: #86dd25;
       margin: 0;
-      background: #0b1110;
+      background: var(--surface);
       color: #e6efec;
       font-family: "Trebuchet MS", sans-serif;
     }
@@ -405,8 +530,159 @@
     }
     #player {
       accent-color: #00bdd2;
+      color-scheme: dark;
+      display: block;
+      height: 36px;
+      opacity: 0.78;
+      transition: opacity 120ms ease;
+    }
+    #player:hover, #player:focus-within, #player:focus-visible {
+      opacity: 1;
+    }
+    button, input {
+      font: inherit;
+      letter-spacing: 0;
+    }
+    button {
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+    #playbackPanel {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 8px 0;
+      background: var(--surface);
+      border-bottom: 1px solid var(--line);
+    }
+    .transport > div {
+      align-items: center;
+      gap: 8px;
+      min-height: 48px;
+    }
+    .transport .m3u-player--left, .transport .m3u-player--right {
+      flex: 0 0 44px;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font-size: 28px;
+      line-height: 1;
+    }
+    .playback-status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 36px;
+      color: #a7bdb5;
+      font-size: 14px;
+    }
+    #retryPlayback {
+      padding: 6px 12px;
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      background: #154744;
+      color: #ffffff;
+    }
+    .station-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin: 16px 0;
+    }
+    #stationSearch {
+      flex: 1 1 180px;
+      min-width: 0;
+      height: 40px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #13201c;
+      color: #e6efec;
+    }
+    #favoritesOnly {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 40px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: transparent;
+      color: #b7c8c0;
+      font-size: 14px;
+    }
+    #favoritesOnly[aria-pressed="true"] {
+      border-color: #e6c65a;
+      background: #292719;
+      color: #f0d979;
+    }
+    .filter-switch {
+      position: relative;
+      flex: 0 0 28px;
+      width: 28px;
+      height: 16px;
+      border-radius: 8px;
+      background: #52615b;
+    }
+    .filter-switch::before {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #e6efec;
+    }
+    #favoritesOnly[aria-pressed="true"] .filter-switch {
+      background: #786322;
+    }
+    #favoritesOnly[aria-pressed="true"] .filter-switch::before {
+      left: 15px;
+      background: #ffe599;
+    }
+    #radioList {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+      gap: 10px;
+    }
+    .station-entry {
+      display: flex;
+      align-items: stretch;
+      min-width: 0;
+      gap: 4px;
+      min-height: 48px;
+    }
+    .favorite-toggle {
+      flex: 0 0 36px;
+      width: 36px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      color: #b7c8c0;
+      font-size: 24px;
+    }
+    .favorite-toggle[aria-pressed="true"] {
+      color: #e6c65a;
     }
     .radio-track {
+      flex: 1;
+      min-width: 0;
+      padding: 8px 10px;
+      overflow-wrap: anywhere;
+      font-size: 14px;
       border: 1px solid #304541;
       border-radius: 4px;
       background: #1b2927;
@@ -428,8 +704,36 @@
       outline: 2px solid #86dd25;
       outline-offset: 2px;
     }
-    @media (prefers-reduced-motion: reduce) {
+    @media (max-width: 600px) {
+      .player-shell {
+        width: calc(100% - 24px);
+        margin-top: 12px;
+      }
+      #logo {
+        box-sizing: border-box;
+      }
+      #player {
+        height: 44px;
+        opacity: 0.9;
+      }
+      #stationSearch, #favoritesOnly {
+        box-sizing: border-box;
+        height: 44px;
+        font-size: 16px;
+      }
       .radio-track {
+        font-size: 16px;
+      }
+      .station-entry {
+        min-height: 52px;
+      }
+      .favorite-toggle {
+        flex-basis: 44px;
+        width: 44px;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .radio-track, #player {
         transition: none;
       }
     }
@@ -458,11 +762,23 @@
     </div>
     </div>
 
+    <div id="playbackPanel">
     <audio style="width: 100%" id="player" src="/play.m3u" preload="none"
       controls="controls">
       not supported?
     </audio>
-    <br></br>
+    <div class="playback-status">
+      <span id="playbackStatus" role="status" aria-live="polite">Loading stations...</span>
+      <button id="retryPlayback" type="button" hidden>Try again</button>
+    </div>
+    </div>
+    <div class="station-tools">
+      <input id="stationSearch" type="search" placeholder="Search stations" aria-label="Search stations" disabled>
+      <button id="favoritesOnly" type="button" aria-pressed="false" disabled>
+        <span class="filter-switch" aria-hidden="true"></span>Favorites only
+      </button>
+    </div>
+    <p id="emptyStations" role="status" hidden>No matching stations</p>
     <div id="radioList">
     </div>
   </div>
