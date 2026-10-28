@@ -314,6 +314,21 @@ if(BUILD_WELLE_CLI)
             COMMAND ${CMAKE_COMMAND} -E copy
                     ${CMAKE_SOURCE_DIR}/src/welle-cli/play.m3u
                     ${CMAKE_CURRENT_BINARY_DIR}/play.m3u)
+        add_custom_command(
+            TARGET ${cliExecutableName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/src/welle-cli/manifest.webmanifest
+                ${CMAKE_CURRENT_BINARY_DIR}/manifest.webmanifest)
+        add_custom_command(
+            TARGET ${cliExecutableName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/src/welle-cli/service-worker.js
+                ${CMAKE_CURRENT_BINARY_DIR}/service-worker.js)
+        add_custom_command(
+            TARGET ${cliExecutableName} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_SOURCE_DIR}/src/welle-gui/icons/icon.png
+                ${CMAKE_CURRENT_BINARY_DIR}/welle-icon.png)
 
     if(APPLE AND WITH_APP_BUNDLE)
         INSTALL (TARGETS ${cliExecutableName} RUNTIME DESTINATION ${GUI_INSTALL_DIR}/${executableName}.app/Contents/MacOS)
@@ -321,8 +336,14 @@ if(BUILD_WELLE_CLI)
             FILES
                 ${PROJECT_SOURCE_DIR}/src/welle-cli/index.html
                 ${PROJECT_SOURCE_DIR}/src/welle-cli/index.js
+                ${PROJECT_SOURCE_DIR}/src/welle-cli/player.html
+                ${PROJECT_SOURCE_DIR}/src/welle-cli/manifest.webmanifest
+                ${PROJECT_SOURCE_DIR}/src/welle-cli/service-worker.js
             DESTINATION ${GUI_INSTALL_DIR}/${executableName}.app/Contents/Resources/welle-cli
         )
+        INSTALL (FILES ${PROJECT_SOURCE_DIR}/src/welle-gui/icons/icon.png
+            DESTINATION ${GUI_INSTALL_DIR}/${executableName}.app/Contents/Resources/welle-cli
+            RENAME welle-icon.png)
     elseif(UNIX)
         INSTALL (TARGETS ${cliExecutableName} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
         INSTALL (FILES src/welle-cli/doc/man/welle-cli.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1/)
@@ -330,8 +351,14 @@ if(BUILD_WELLE_CLI)
             FILES
                 ${PROJECT_SOURCE_DIR}/src/welle-cli/index.html
                 ${PROJECT_SOURCE_DIR}/src/welle-cli/index.js
+                ${PROJECT_SOURCE_DIR}/src/welle-cli/player.html
+                ${PROJECT_SOURCE_DIR}/src/welle-cli/manifest.webmanifest
+                ${PROJECT_SOURCE_DIR}/src/welle-cli/service-worker.js
             DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/welle-io/html/
         )
+        INSTALL (FILES ${PROJECT_SOURCE_DIR}/src/welle-gui/icons/icon.png
+            DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/welle-io/html/
+            RENAME welle-icon.png)
     endif()
 endif()
 

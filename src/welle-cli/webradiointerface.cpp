@@ -104,6 +104,11 @@ static const char* http_contenttype_js =
 static const char* http_contenttype_html =
         "Content-Type: text/html; charset=utf-8\r\n";
 
+static const char* http_contenttype_manifest =
+    "Content-Type: application/manifest+json; charset=utf-8\r\n";
+
+static const char* http_contenttype_png = "Content-Type: image/png\r\n";
+
 static const char* http_nocache = "Cache-Control: no-cache\r\n";
 
 static string to_hex(uint32_t value, int width)
@@ -474,6 +479,15 @@ bool WebRadioInterface::dispatch_client(Socket&& client)
             else if (req.url == "/index.js") {
                 success = send_file(s, "index.js", http_contenttype_js);
             }
+            else if (req.url == "/manifest.webmanifest") {
+                success = send_file(s, "manifest.webmanifest", http_contenttype_manifest);
+            }
+            else if (req.url == "/service-worker.js") {
+                success = send_file(s, "service-worker.js", http_contenttype_js);
+            }
+            else if (req.url == "/welle-icon.png") {
+                success = send_file(s, "welle-icon.png", http_contenttype_png);
+            }
             else if (req.url == "/mux.json") {
                 success = send_mux_json(s);
             }
@@ -562,7 +576,7 @@ bool WebRadioInterface::send_file(Socket& s,
         const std::string& filename,
         const std::string& content_type)
 {
-    FILE *fd = fopen(filename.c_str(), "r");
+    FILE *fd = fopen(filename.c_str(), "rb");
     if (fd) {
         if (not send_http_response(s, http_ok, "", content_type)) {
             cerr << "Failed to send file headers" << endl;

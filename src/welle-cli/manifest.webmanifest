@@ -1,0 +1,18 @@
+{
+  "name": "MatMat Radio",
+  "short_name": "MatMat",
+  "description": "Live radio player",
+  "start_url": "/player.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf0e6",
+  "theme_color": "#443634",
+  "icons": [
+    {
+      "src": "/welle-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

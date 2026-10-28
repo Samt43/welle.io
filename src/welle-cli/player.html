@@ -242,7 +242,12 @@
 <html>
 
 <head>
-  <title>player</title>
+  <title>MatMat Radio</title>
+  <meta charset="UTF-8">
+  <meta name="theme-color" content="#443634">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/png" href="/welle-icon.png">
+  <link rel="apple-touch-icon" href="/welle-icon.png">
 </head>
 
 <body id="body" style="background-color:black; color:white;">
@@ -276,6 +281,13 @@
     </div>
   </div>
 
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function() {
+        navigator.serviceWorker.register("/service-worker.js");
+      });
+    }
+  </script>
 </body>
 
 </html>
